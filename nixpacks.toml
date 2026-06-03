@@ -1,0 +1,4 @@
+# Railway / Nixpacks build config.
+# Node 20 is required — Node 18 is EOL and the @x402 + MCP stack errors on it.
+[variables]
+NIXPACKS_NODE_VERSION = "20"
