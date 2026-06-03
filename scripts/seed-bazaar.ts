@@ -14,8 +14,10 @@ import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import { toClientEvmSigner } from "@x402/evm";
 import { registerExactEvmScheme } from "@x402/evm/exact/client";
-import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
+import { wrapFetchWithPayment, x402Client, decodePaymentResponseHeader } from "@x402/fetch";
 import { REGISTRY } from "../src/registry";
+
+const BASESCAN_TX = "https://basescan.org/tx/";
 
 const RPC_URL = process.env.RPC_URL ?? "https://mainnet.base.org";
 
@@ -109,10 +111,31 @@ const CALLS: SeedCall[] = [
   },
 ];
 
+interface SeedOutcome {
+  name: string;
+  status: number;
+  ok: boolean;
+  txHash?: string;
+  payer?: string;
+  network?: string;
+  note?: string;
+}
+
+/** Decode the x402 settlement result (on-chain tx hash) from the response. */
+function readSettlement(headers: Headers): { txHash?: string; payer?: string; network?: string } {
+  const raw = headers.get("PAYMENT-RESPONSE") ?? headers.get("X-PAYMENT-RESPONSE");
+  if (!raw) return {};
+  try {
+    const settle = decodePaymentResponseHeader(raw);
+    return { txHash: settle.transaction, payer: settle.payer, network: settle.network };
+  } catch {
+    return {};
+  }
+}
+
 async function main(): Promise<void> {
   const payFetch = buildPayFetch();
-  let ok = 0;
-  let failed = 0;
+  const outcomes: SeedOutcome[] = [];
 
   for (const call of CALLS) {
     process.stdout.write(`Seeding ${call.name} (${call.url}) ... `);
@@ -122,21 +145,36 @@ async function main(): Promise<void> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(call.body),
       });
+      const settle = readSettlement(res.headers);
       const text = await res.text();
       if (res.ok) {
-        ok++;
-        console.log(`OK (HTTP ${res.status})`);
+        console.log(`OK (HTTP ${res.status})${settle.txHash ? ` — tx ${settle.txHash}` : " — no settlement header"}`);
+        outcomes.push({ name: call.name, status: res.status, ok: true, ...settle });
       } else {
-        failed++;
         console.log(`FAILED (HTTP ${res.status}): ${text.slice(0, 200)}`);
+        outcomes.push({ name: call.name, status: res.status, ok: false, ...settle, note: text.slice(0, 200) });
       }
     } catch (err) {
-      failed++;
       console.log(`ERROR: ${(err as Error).message}`);
+      outcomes.push({ name: call.name, status: 0, ok: false, note: (err as Error).message });
     }
   }
 
-  console.log(`\nSeed complete — ${ok} ok, ${failed} failed out of ${CALLS.length}.`);
+  const ok = outcomes.filter((o) => o.ok).length;
+  const failed = outcomes.length - ok;
+
+  console.log(`\n──────────────── Settlement transactions ────────────────`);
+  for (const o of outcomes) {
+    if (o.txHash) {
+      console.log(`${o.name.padEnd(9)} ${o.txHash}`);
+      console.log(`${"".padEnd(9)} ${BASESCAN_TX}${o.txHash}`);
+    } else {
+      console.log(`${o.name.padEnd(9)} (no tx hash — ${o.ok ? "settlement header absent" : `HTTP ${o.status || "error"}`})`);
+    }
+  }
+  console.log(`──────────────────────────────────────────────────────────`);
+
+  console.log(`\nSeed complete — ${ok} ok, ${failed} failed out of ${outcomes.length}.`);
   console.log("The CDP facilitator indexes settled resources into x402 Bazaar; allow time for the catalog to update.");
   if (failed > 0) process.exitCode = 1;
 }
