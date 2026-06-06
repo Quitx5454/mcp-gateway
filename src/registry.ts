@@ -20,7 +20,7 @@ export interface AgentEndpoint {
 
 const REFINE_BASE = process.env.REFINE_URL ?? "https://distill-agent-production.up.railway.app";
 const FORGE_BASE = process.env.FORGE_URL ?? "https://forge-agent-production.up.railway.app";
-const SHIELD_BASE = process.env.SHIELD_URL ?? "https://shield-agent-production.up.railway.app";
+const SHIELD_BASE = process.env.SHIELD_URL ?? "https://shield-agent-v2-production.up.railway.app";
 const PIPELINE_BASE = process.env.PIPELINE_URL ?? "https://pipeline-agent-production-7736.up.railway.app";
 
 export const REGISTRY = {
