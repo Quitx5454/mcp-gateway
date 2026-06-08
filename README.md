@@ -1,6 +1,6 @@
 # Distill MCP Gateway
 
-A unified [Model Context Protocol](https://modelcontextprotocol.io) server that exposes all five live **Distill** stateless middleware agents (x402 / ERC-8004 on Base Mainnet) as MCP tools. Any MCP-compatible client — Claude Desktop, Daydreams, or your own — gets every Distill agent as a native tool through one endpoint.
+A unified [Model Context Protocol](https://modelcontextprotocol.io) server that exposes all three live **Distill** stateless middleware agents — Refine, Shield, and Trace (x402 / ERC-8004 on Base Mainnet) — as MCP tools. Any MCP-compatible client — Claude Desktop, Daydreams, or your own — gets every Distill agent as a native tool through one endpoint.
 
 > Part of [Distill](https://quitx5454.github.io/pulse) — *pure signal, no noise.*
 
@@ -9,17 +9,14 @@ A unified [Model Context Protocol](https://modelcontextprotocol.io) server that 
 | Tool | Agent | Method | Price | Description |
 |------|-------|--------|-------|-------------|
 | `refine` | Refine | POST | 0.02 USDC | Clean raw blockchain transaction data, filter bots, return structured output |
-| `forge` | Forge | POST | 0.02 USDC | Compile an ERC-8004 reputation proof (keccak-256 hash + IPFS + giveFeedback calldata) |
 | `trace` | Trace | POST | 0.01 USDC | Normalize a raw agent execution log into structured steps + a `forge_ready` block |
 | `shield` | Shield | POST | 0.005 USDC | Sanitize PII from an x402 request + issue an HMAC-SHA256 replay guard before signing |
-| `pipeline_invoke` | Pipeline | POST | 0.03 USDC | Chain any combination of the agents in one async call (returns a `task_id`) |
-| `pipeline_status` | Pipeline | GET | **free** | Poll a pipeline run's status and results by `task_id` |
 
-All tools except `pipeline_status` are x402-protected on Base Mainnet (`eip155:8453`, USDC).
+All tools are x402-protected on Base Mainnet (`eip155:8453`, USDC).
 
 ## Payment model
 
-The gateway holds its own wallet (`PRIVATE_KEY`) and pays x402 challenges **automatically** via [`@x402/axios`](https://www.npmjs.com/package/@x402/axios) — same EVM exact-scheme client (viem + `@x402/evm`) the sibling Pipeline agent uses for downstream payments.
+The gateway holds its own wallet (`PRIVATE_KEY`) and pays x402 challenges **automatically** via [`@x402/axios`](https://www.npmjs.com/package/@x402/axios), using the EVM exact-scheme client (viem + `@x402/evm`).
 
 **402 is never swallowed.** If a challenge cannot be settled — no wallet configured (passthrough mode), insufficient funds, or facilitator rejection — the underlying x402 challenge is surfaced as an MCP tool error (`isError: true`) whose `structuredContent` carries the decoded `payment_required` payload. This lets a paying client framework (e.g. Daydreams [`@x402/mcp`](https://www.npmjs.com/package/@x402/mcp)) intercept the tool error and complete the payment itself.
 
@@ -57,13 +54,13 @@ bun run start
 
 ## Seeding x402 Bazaar
 
-`scripts/seed-bazaar.ts` calls each of the five invoke endpoints once with realistic data, paying with a seeder wallet. A settled payment through the CDP facilitator is what triggers indexing into the x402 Bazaar catalog.
+`scripts/seed-bazaar.ts` calls each of the three invoke endpoints once with realistic data, paying with a seeder wallet. A settled payment through the CDP facilitator is what triggers indexing into the x402 Bazaar catalog.
 
 ```bash
 SEEDER_PRIVATE_KEY=0x... bun run seed
 ```
 
-> Costs real USDC on Base Mainnet (~0.085 USDC total). Run once.
+> Costs real USDC on Base Mainnet (~0.035 USDC total). Run once.
 
 ## Environment
 
@@ -75,7 +72,7 @@ SEEDER_PRIVATE_KEY=0x... bun run seed
 | `PORT` | no | HTTP port (default 3000). |
 | `AGENT_TIMEOUT_MS` | no | Per-agent request timeout (default 60000). |
 | `MCP_TRANSPORT` | no | Set to `stdio` to force stdio transport. |
-| `REFINE_URL` / `FORGE_URL` / `SHIELD_URL` / `PIPELINE_URL` | no | Override agent base URLs (default: production). |
+| `REFINE_URL` / `TRACE_URL` / `SHIELD_URL` | no | Override agent base URLs (default: production). `FORGE_URL` is still accepted as a fallback for `TRACE_URL` (Trace runs on the kept forge-agent deployment). |
 
 ## Develop
 
@@ -88,7 +85,7 @@ bun run dev          # watch mode
 
 ```
 src/
-  tools/        refine.ts forge.ts trace.ts shield.ts pipeline.ts
+  tools/        refine.ts trace.ts shield.ts
   registry.ts   agent URLs + config
   x402.ts       payment client (viem + @x402/evm) + agent transport (402 → Payment402Error)
   result.ts     maps agent results / payment failures → MCP tool results

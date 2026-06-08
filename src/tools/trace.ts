@@ -24,7 +24,7 @@ export function registerTrace(server: McpServer): void {
       title: "Trace — execution log normalizer",
       description:
         "Normalize a raw agent execution log into structured steps + a summary (durations, tokens, errors, retries, status) and emit a " +
-        "forge_ready block (can_submit, suggested_score, suggested_tag1/2) suitable for feeding straight into Forge. " +
+        "forge_ready block (can_submit, suggested_score, suggested_tag1/2) — a suggested ERC-8004 reputation score and tags. " +
         "Supports plaintext, json, opentelemetry, langchain, and openai formats. " +
         "Paid endpoint — costs 0.01 USDC per call (x402 on Base Mainnet); the gateway pays automatically when a wallet is configured, " +
         "otherwise the x402 payment challenge is returned for the client to settle.",

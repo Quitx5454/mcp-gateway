@@ -1,14 +1,13 @@
 // ── seed-bazaar.ts ─────────────────────────────────────────────────────────
-// One-time seeding script. Calls each of the five Distill invoke endpoints once
+// One-time seeding script. Calls each of the three Distill invoke endpoints once
 // with realistic data, paying the x402 challenge with the SEEDER wallet. A
 // successful settlement through the CDP facilitator is what triggers the
 // facilitator to index each resource into the x402 Bazaar catalog.
 //
 // Usage:  SEEDER_PRIVATE_KEY=0x... bun run scripts/seed-bazaar.ts
 //
-// Costs real USDC on Base Mainnet: ~0.085 USDC total (0.02 + 0.02 + 0.01 +
-// 0.005 + 0.03). Pipeline is async — it settles 0.03 and returns a task_id; the
-// downstream agents it chains are paid by the pipeline's own wallet, not here.
+// Costs real USDC on Base Mainnet: ~0.035 USDC total (refine 0.02 + trace 0.01
+// + shield 0.005).
 import { createPublicClient, http as viemHttp } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
@@ -68,20 +67,6 @@ const CALLS: SeedCall[] = [
     },
   },
   {
-    name: REGISTRY.forge.label,
-    url: REGISTRY.forge.url,
-    body: {
-      agent_id: "6482",
-      chain_id: 8453,
-      task: "bazaar seed",
-      response_latency_ms: 500,
-      usdc_paid: "10000",
-      tx_hash: "0xseed0000000000000000000000000000000000000000000000000000000000",
-      success: true,
-      score: 90,
-    },
-  },
-  {
     name: REGISTRY.shield.label,
     url: REGISTRY.shield.url,
     body: {
@@ -96,16 +81,6 @@ const CALLS: SeedCall[] = [
         maxAmountRequired: "5000",
         asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
         payTo: "0x104b5768FE505c400dd98F447665CB5c6fca388A",
-      },
-    },
-  },
-  {
-    name: REGISTRY.pipeline.label,
-    url: REGISTRY.pipeline.url,
-    body: {
-      pipeline: ["trace"],
-      payload: {
-        log: "[2026-06-03T10:00:00Z] step 1: seed (100ms)\n[2026-06-03T10:00:00Z] done",
       },
     },
   },

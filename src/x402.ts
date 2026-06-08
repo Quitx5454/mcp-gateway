@@ -1,10 +1,8 @@
 // ── x402 payment client + agent transport ─────────────────────────────────
 // Builds an axios instance that pays for x402-protected endpoints using the
-// gateway's own wallet (PRIVATE_KEY), mirroring the proven outbound client used
-// by pipeline-agent (viem + @x402/evm exact scheme). Two call helpers:
+// gateway's own wallet (PRIVATE_KEY), via viem + the @x402/evm exact scheme.
 //
 //   callPaidAgent(url, body)  — POSTs with automatic x402 payment.
-//   callFreeAgent(url)        — GETs a free endpoint (pipeline status).
 //
 // CRITICAL: a 402 is never swallowed. If payment cannot be completed (no key,
 // insufficient funds, settlement rejected) the underlying 402 challenge is
@@ -91,8 +89,8 @@ function decodeChallengeHeader(headers: Record<string, unknown>): unknown | unde
 
 /**
  * Strip the Lucid HTTP wrapper ({ run_id, status, output: <DistillResponse> })
- * so callers see the Distill Standard Envelope. Pipeline (pure Express) returns
- * a flat object and is passed through unchanged.
+ * so callers see the Distill Standard Envelope. An agent that already returns a
+ * flat object (e.g. Shield v2 on Hono) is passed through unchanged.
  */
 function unwrapLucid(body: unknown): unknown {
   if (!body || typeof body !== "object") return body;
@@ -135,21 +133,5 @@ export async function callPaidAgent(url: string, body: unknown): Promise<unknown
     // Payment-payload / signing / settlement errors from the x402 wrapper arrive
     // as plain Errors with no response — treat as a payment failure.
     throw new Payment402Error(url, undefined, (err as Error).message);
-  }
-}
-
-/** GET a free (unpaywalled) endpoint — used by pipeline_status. */
-export async function callFreeAgent(url: string): Promise<unknown> {
-  try {
-    const res = await axios.get(url, { timeout: TIMEOUT_MS, validateStatus: () => true });
-    if (res.status >= 400) {
-      const detail =
-        typeof res.data === "string" ? res.data.slice(0, 500) : JSON.stringify(res.data ?? {}).slice(0, 500);
-      throw new AgentError(`status endpoint returned HTTP ${res.status}${detail ? `: ${detail}` : ""}`, res.status);
-    }
-    return res.data;
-  } catch (err) {
-    if (err instanceof AgentError) throw err;
-    throw new AgentError(`status request failed: ${(err as Error).message}`);
   }
 }
