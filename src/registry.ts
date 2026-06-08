@@ -21,7 +21,7 @@ export interface AgentEndpoint {
 const REFINE_BASE = process.env.REFINE_URL ?? "https://distill-agent-production.up.railway.app";
 // Trace is served from the (kept) forge-agent deployment; FORGE_URL is still
 // accepted as a fallback for backward compatibility with existing env config.
-const TRACE_BASE = process.env.TRACE_URL ?? process.env.FORGE_URL ?? "https://forge-agent-production.up.railway.app";
+const TRACE_BASE = process.env.TRACE_URL ?? process.env.FORGE_URL ?? "https://trace-agent-production.up.railway.app";
 const SHIELD_BASE = process.env.SHIELD_URL ?? "https://shield-agent-v2-production.up.railway.app";
 
 export const REGISTRY = {
